@@ -529,34 +529,40 @@ body {
 
 /* Baud Rate Menu */
 .baud-rate-menu {
-  min-width: 200px;
+  min-width: 250px;
   max-width: 300px;
+  color: var(--sidebar-text);
 }
 
 .baud-rate-menu h3 {
   color: var(--sidebar-heading);
   margin: 0 0 1em 0;
   text-align: center;
+  font-size: 1.1em;
 }
 
 .baud-rate-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   margin-bottom: 1em;
   max-height: 300px;
   overflow-y: auto;
+  border: 1px solid var(--sidebar-divider);
+  border-radius: 4px;
+  background: var(--sidebar-divider);
 }
 
 .baud-rate-option {
   background: var(--sidebar-button);
   color: var(--sidebar-text);
   border: none;
-  padding: 0.6em 1em;
+  padding: 0.8em 1.2em;
   text-align: left;
   cursor: pointer;
   transition: background 0.2s;
-  font-size: 0.9em;
+  font-size: 0.95em;
+  font-family: var(--mono);
 }
 
 .baud-rate-option:hover {
@@ -574,14 +580,24 @@ body {
   gap: 0.5em;
 }
 
+.baud-rate-actions .baud-rate-option {
+  background: var(--sidebar-button);
+  border: 1px solid var(--sidebar-divider);
+  border-radius: 4px;
+  text-align: center;
+  font-family: var(--font);
+}
+
 .baud-rate-cancel {
   background: var(--sidebar-accent);
   color: white;
   border: none;
-  padding: 0.6em 1em;
+  padding: 0.8em 1.2em;
   cursor: pointer;
   transition: background 0.2s;
-  font-size: 0.9em;
+  font-size: 0.95em;
+  border-radius: 4px;
+  text-align: center;
 }
 
 .baud-rate-cancel:hover {

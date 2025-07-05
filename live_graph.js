@@ -156,28 +156,40 @@ export class LiveGraph {
           <button id="cancel-baud" class="baud-rate-cancel">Cancel</button>
         </div>
       </div>
-      <script>
-        document.querySelectorAll('.baud-rate-option[data-baud]').forEach(btn => {
-          btn.onclick = () => {
-            window.liveGraphInstance.baud = parseInt(btn.dataset.baud);
-            window.liveGraphInstance.renderSidebar();
-            document.getElementById('modal').classList.add('hidden');
-          };
-        });
-        document.getElementById('more-options-btn').onclick = () => {
-          const customRate = prompt('Enter custom baud rate:', window.liveGraphInstance.baud);
+    `);
+    
+    // Set up event listeners after modal is created
+    setTimeout(() => {
+      document.querySelectorAll('.baud-rate-option[data-baud]').forEach(btn => {
+        btn.onclick = () => {
+          this.baud = parseInt(btn.dataset.baud);
+          this.renderSidebar();
+          document.getElementById('modal').classList.add('hidden');
+          document.getElementById('modal').innerHTML = '';
+        };
+      });
+      
+      const moreOptionsBtn = document.getElementById('more-options-btn');
+      if (moreOptionsBtn) {
+        moreOptionsBtn.onclick = () => {
+          const customRate = prompt('Enter custom baud rate:', this.baud);
           if (customRate && !isNaN(customRate)) {
-            window.liveGraphInstance.baud = parseInt(customRate);
-            window.liveGraphInstance.renderSidebar();
+            this.baud = parseInt(customRate);
+            this.renderSidebar();
           }
           document.getElementById('modal').classList.add('hidden');
+          document.getElementById('modal').innerHTML = '';
         };
-        document.getElementById('cancel-baud').onclick = () => {
+      }
+      
+      const cancelBtn = document.getElementById('cancel-baud');
+      if (cancelBtn) {
+        cancelBtn.onclick = () => {
           document.getElementById('modal').classList.add('hidden');
+          document.getElementById('modal').innerHTML = '';
         };
-      </script>
-    `);
-    window.liveGraphInstance = this;
+      }
+    }, 10);
   }
 
   toggleSplitMode() {
