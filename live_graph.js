@@ -29,6 +29,9 @@ export class LiveGraph {
     this.smoothingBuffer = [];
     this.smoothingFactor = 0.8;
     this.animationFrame = null;
+    this.splitMode = false; // false = single graph, true = split graphs
+    this.canvases = [];
+    this.contexts = [];
     this.init();
   }
 
@@ -36,11 +39,43 @@ export class LiveGraph {
     const tab = document.getElementById('tab-live');
     tab.innerHTML = `
       <div id="live-graph-container">
-        <canvas id="live-graph" width="900" height="600"></canvas>
+        <div id="single-graph-view">
+          <canvas id="live-graph" width="900" height="600"></canvas>
+        </div>
+        <div id="split-graph-view" style="display: none;">
+          <div class="graph-grid">
+            <div class="graph-panel">
+              <div class="graph-title">Graph 1</div>
+              <canvas id="graph-1" width="450" height="280"></canvas>
+            </div>
+            <div class="graph-panel">
+              <div class="graph-title">Graph 2</div>
+              <canvas id="graph-2" width="450" height="280"></canvas>
+            </div>
+            <div class="graph-panel">
+              <div class="graph-title">Graph 3</div>
+              <canvas id="graph-3" width="450" height="280"></canvas>
+            </div>
+            <div class="graph-panel">
+              <div class="graph-title">Graph 4</div>
+              <canvas id="graph-4" width="450" height="280"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+    
+    // Initialize single graph canvas
     this.canvas = document.getElementById('live-graph');
     this.ctx = this.canvas.getContext('2d');
+    
+    // Initialize split graph canvases
+    for (let i = 1; i <= 4; i++) {
+      const canvas = document.getElementById(`graph-${i}`);
+      this.canvases[i-1] = canvas;
+      this.contexts[i-1] = canvas.getContext('2d');
+    }
+    
     this.draw();
     
     // Update data rate every second
@@ -103,6 +138,64 @@ export class LiveGraph {
     setTimeout(() => this.simulateData(), 1000 / (this.dataRate * 2));
   }
 
+  showBaudRateMenu() {
+    const baudRates = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, 115200, 230400, 250000];
+    
+    showModal(`
+      <div class="baud-rate-menu">
+        <h3>Select Baud Rate</h3>
+        <div class="baud-rate-list">
+          ${baudRates.map(rate => `
+            <button class="baud-rate-option ${rate === this.baud ? 'selected' : ''}" data-baud="${rate}">
+              ${rate}
+            </button>
+          `).join('')}
+        </div>
+        <div class="baud-rate-actions">
+          <button id="more-options-btn" class="baud-rate-option">More Options</button>
+          <button id="cancel-baud" class="baud-rate-cancel">Cancel</button>
+        </div>
+      </div>
+      <script>
+        document.querySelectorAll('.baud-rate-option[data-baud]').forEach(btn => {
+          btn.onclick = () => {
+            window.liveGraphInstance.baud = parseInt(btn.dataset.baud);
+            window.liveGraphInstance.renderSidebar();
+            document.getElementById('modal').classList.add('hidden');
+          };
+        });
+        document.getElementById('more-options-btn').onclick = () => {
+          const customRate = prompt('Enter custom baud rate:', window.liveGraphInstance.baud);
+          if (customRate && !isNaN(customRate)) {
+            window.liveGraphInstance.baud = parseInt(customRate);
+            window.liveGraphInstance.renderSidebar();
+          }
+          document.getElementById('modal').classList.add('hidden');
+        };
+        document.getElementById('cancel-baud').onclick = () => {
+          document.getElementById('modal').classList.add('hidden');
+        };
+      </script>
+    `);
+    window.liveGraphInstance = this;
+  }
+
+  toggleSplitMode() {
+    this.splitMode = !this.splitMode;
+    const singleView = document.getElementById('single-graph-view');
+    const splitView = document.getElementById('split-graph-view');
+    
+    if (this.splitMode) {
+      singleView.style.display = 'none';
+      splitView.style.display = 'block';
+    } else {
+      singleView.style.display = 'block';
+      splitView.style.display = 'none';
+    }
+    
+    this.renderSidebar();
+  }
+
   renderSidebar() {
     const sb = document.getElementById('sidebar');
     const isAdmin = (window.loginInfo && window.loginInfo.role === "admin");
@@ -116,7 +209,7 @@ export class LiveGraph {
       </div>
       
       <div class="sidebar-section">
-        <h3>Graph 1 - Options</h3>
+        <h3>Graph ${this.splitMode ? 'Split' : '1'} - Options</h3>
         <div class="graph-options">
           <button id="line-btn" class="option-btn ${this.graphType === 'line' ? 'active' : ''}">Line</button>
           <button id="dot-btn" class="option-btn ${this.graphType === 'dot' ? 'active' : ''}">Dots</button>
@@ -126,13 +219,13 @@ export class LiveGraph {
         <div class="scale-controls">
           <div class="scale-row">
             <span>X:</span>
-            <input type="number" id="x-scale" value="20" class="scale-input">
+            <input type="number" id="x-scale" value="15" class="scale-input">
             <span>Y:</span>
-            <input type="number" id="y-scale" value="1000" class="scale-input">
+            <input type="number" id="y-scale" value="${this.splitMode ? '110' : '200'}" class="scale-input">
           </div>
           <label class="scale-option">
             <input type="checkbox" id="expand-only" ${this.expandOnly ? 'checked' : ''}>
-            Scale: Expand Only
+            Scale: Manual
           </label>
         </div>
       </div>
@@ -149,8 +242,9 @@ export class LiveGraph {
         <div class="split-section">
           <span>Split:</span>
           <div class="split-controls">
-            ${this.splitChannels.map(ch => `<span class="split-tag">${ch}</span>`).join('')}
+            ${this.splitChannels.map(ch => `<span class="split-tag ${ch <= 4 ? 'active' : ''}">${ch}</span>`).join('')}
           </div>
+          <button id="toggle-split" class="sidebtn split-toggle">${this.splitMode ? 'Single Graph' : 'Split Graphs'}</button>
         </div>
         
         <div class="frequency-display">
@@ -159,9 +253,9 @@ export class LiveGraph {
       </div>
       
       <div class="sidebar-section signals-section">
-        <h3>Graph 1</h3>
+        <h3>Graph ${this.splitMode ? 'Signals' : '1'}</h3>
         <div class="signals-list">
-          ${this.channelNames.map((name, i) => `
+          ${this.channelNames.slice(0, this.splitMode ? 13 : 13).map((name, i) => `
             <div class="signal-item ${this.channelVisible[i] ? 'visible' : 'hidden'}" data-channel="${i}">
               <div class="signal-indicator" style="background-color: ${this.channelColors[i]}">
                 <span class="signal-icon">${this.channelVisible[i] ? '▲' : '▼'}</span>
@@ -182,8 +276,11 @@ export class LiveGraph {
       <div class="sidebar-section">
         <h3>Serial Settings</h3>
         <button id="live-connect-btn" class="sidebtn connect-btn">${this.connected ? 'Disconnect' : 'Connect Serial'}</button>
-        <label>Baud Rate: <input id="live-baud" type="number" value="${this.baud}" min="300" max="250000"></label>
-        <label>Max Samples: <input id="max-samples" type="number" value="${this.maxSamples}" min="100" max="10000"></label>
+        <div class="serial-settings">
+          <label>Port: COM4</label>
+          <button id="baud-rate-btn" class="sidebtn baud-btn">Baud: ${this.baud}</button>
+          <label>Max Samples: <input id="max-samples" type="number" value="${this.maxSamples}" min="100" max="10000"></label>
+        </div>
         <div class="keyboard-hint">Ctrl+S to save data</div>
       </div>
       
@@ -200,14 +297,14 @@ export class LiveGraph {
     `;
     
     this.setupEventListeners();
-    setStatusBar(`${this.connected ? 'Connected' : 'Disconnected'} | ${this.baud} baud | ${this.dataRate.toFixed(1)} Hz | Live Graph`);
+    setStatusBar(`${this.connected ? 'Connected' : 'Disconnected'} | COM4 | ${this.baud} baud | ${this.dataRate.toFixed(1)} Hz | Live Graph`);
   }
 
   setupEventListeners() {
     document.getElementById('live-connect-btn').onclick = () => this.toggleSerial();
     document.getElementById('live-record-btn').onclick = () => this.toggleRecording();
     document.getElementById('set-output-file').onclick = () => this.setOutputFile();
-    document.getElementById('live-baud').onchange = e => { this.baud = Number(e.target.value); };
+    document.getElementById('baud-rate-btn').onclick = () => this.showBaudRateMenu();
     document.getElementById('max-samples').onchange = e => { this.maxSamples = Number(e.target.value); };
     document.getElementById('line-btn').onclick = () => this.setGraphType('line');
     document.getElementById('dot-btn').onclick = () => this.setGraphType('dot');
@@ -218,6 +315,7 @@ export class LiveGraph {
     document.getElementById('data-clear').onclick = () => this.clearGraph();
     document.getElementById('toggle-hidden').onclick = () => this.toggleHiddenChannels();
     document.getElementById('toggle-empty').onclick = () => this.toggleEmptyChannels();
+    document.getElementById('toggle-split').onclick = () => this.toggleSplitMode();
     
     // Signal item click handlers
     document.querySelectorAll('.signal-item').forEach((item, index) => {
@@ -393,7 +491,7 @@ export class LiveGraph {
     }
   }
 
-  draw() {
+  drawSingleGraph() {
     const ctx = this.ctx;
     const w = this.canvas.width;
     const h = this.canvas.height;
@@ -528,6 +626,133 @@ export class LiveGraph {
           }
         }
       }
+    }
+  }
+
+  drawSplitGraphs() {
+    // Define which channels go to which graph
+    const graphChannels = [
+      [0, 1, 2], // Graph 1: Signal-1, Signal-2, Signal-3
+      [3, 4], // Graph 2: Signal-4, Signal-5
+      [5, 6, 7, 8], // Graph 3: Signal-6, Signal-7, Signal-8, Signal-9
+      [9, 10, 11, 12] // Graph 4: Signal-10, Signal-11, Signal-12, Signal-13
+    ];
+    
+    for (let graphIndex = 0; graphIndex < 4; graphIndex++) {
+      const ctx = this.contexts[graphIndex];
+      const canvas = this.canvases[graphIndex];
+      const w = canvas.width;
+      const h = canvas.height;
+      const channels = graphChannels[graphIndex];
+      
+      // Clear canvas
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(0, 0, w, h);
+      
+      if (!this.data.length) continue;
+      
+      // Calculate scale for this graph's channels
+      let yMin = this.yMin, yMax = this.yMax;
+      if (this.autoScale || this.expandOnly) {
+        const visibleData = [];
+        for (let i = 0; i < this.data.length; i++) {
+          for (let ch of channels) {
+            if (this.channelVisible[ch] && this.data[i][ch] !== undefined) {
+              visibleData.push(this.data[i][ch]);
+            }
+          }
+        }
+        
+        if (visibleData.length > 0) {
+          yMin = Math.min(...visibleData);
+          yMax = Math.max(...visibleData);
+          const range = yMax - yMin;
+          if (range === 0) {
+            yMin -= 1;
+            yMax += 1;
+          } else {
+            yMin -= range * 0.05;
+            yMax += range * 0.05;
+          }
+        }
+      }
+      
+      // Draw grid
+      ctx.strokeStyle = "#2a2a2a";
+      ctx.lineWidth = 0.5;
+      
+      // Horizontal grid lines
+      for (let i = 0; i <= 5; i++) {
+        const y = (i / 5) * h;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      
+      // Vertical grid lines
+      for (let i = 0; i <= 10; i++) {
+        const x = (i / 10) * w;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      
+      // Draw Y-axis labels
+      ctx.fillStyle = "#888";
+      ctx.font = "10px Arial";
+      ctx.textAlign = "right";
+      for (let i = 0; i <= 5; i++) {
+        const y = (i / 5) * h;
+        const value = yMax - (i / 5) * (yMax - yMin);
+        ctx.fillText(value.toFixed(0), w - 3, y + 3);
+      }
+      
+      // Draw X-axis labels
+      ctx.textAlign = "center";
+      for (let i = 0; i <= 10; i++) {
+        const x = (i / 10) * w;
+        const timeValue = i * 2;
+        ctx.fillText(timeValue.toString(), x, h - 3);
+      }
+      
+      // Draw channels for this graph
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      for (let ch of channels) {
+        if (!this.channelVisible[ch]) continue;
+        
+        ctx.strokeStyle = this.channelColors[ch];
+        ctx.lineWidth = 1.2;
+        
+        ctx.beginPath();
+        let firstPoint = true;
+        for (let i = 0; i < this.data.length; i++) {
+          if (this.data[i][ch] !== undefined) {
+            const x = (i / Math.max(this.data.length - 1, 1)) * w;
+            const value = this.data[i][ch];
+            const y = h - ((value - yMin) / (yMax - yMin)) * h;
+            
+            if (firstPoint) {
+              ctx.moveTo(x, y);
+              firstPoint = false;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  draw() {
+    if (this.splitMode) {
+      this.drawSplitGraphs();
+    } else {
+      this.drawSingleGraph();
     }
   }
 
