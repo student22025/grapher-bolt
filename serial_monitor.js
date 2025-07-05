@@ -385,7 +385,7 @@ export class SerialMonitor {
     }
     
     // Focus input field when typing (if not in an input already)
-    if (!e.ctrlKey && !e.altKey && e.key.length === 1 && 
+    if (!e.ctrlKey && !e.altKey && typeof e.key === 'string' && e.key.length === 1 && 
         !document.activeElement.matches('input, textarea')) {
       this.input.focus();
       this.input.value += e.key;
