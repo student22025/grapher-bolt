@@ -150,6 +150,13 @@ export class DriveIntegration {
     return new Promise((resolve, reject) => {
       // Simulate OAuth popup
       const popup = window.open('about:blank', 'google-auth', 'width=500,height=600');
+      
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
+        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
+        return;
+      }
+      
       popup.document.write(`
         <html>
           <head><title>Google Drive Authorization</title></head>
@@ -187,6 +194,13 @@ export class DriveIntegration {
     // Simulate OneDrive OAuth flow
     return new Promise((resolve, reject) => {
       const popup = window.open('about:blank', 'onedrive-auth', 'width=500,height=600');
+      
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
+        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
+        return;
+      }
+      
       popup.document.write(`
         <html>
           <head><title>OneDrive Authorization</title></head>
@@ -224,6 +238,13 @@ export class DriveIntegration {
     // Simulate Dropbox OAuth flow
     return new Promise((resolve, reject) => {
       const popup = window.open('about:blank', 'dropbox-auth', 'width=500,height=600');
+      
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
+        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
+        return;
+      }
+      
       popup.document.write(`
         <html>
           <head><title>Dropbox Authorization</title></head>
