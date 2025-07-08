@@ -86,7 +86,7 @@ export class FileNamingSystem {
     return {
       folderName,
       fileName,
-      fullPath: `Endo_Data/${folderName}/${fileName}`
+      fullPath: `${folderName}/${fileName}`
     };
   }
 

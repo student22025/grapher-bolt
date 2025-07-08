@@ -4,11 +4,11 @@ import { showModal } from './ui.js';
 export class DriveIntegration {
   constructor() {
     this.driveSettings = {
-      provider: 'googledrive', // googledrive, onedrive, dropbox
+      provider: 'googledrive', // only googledrive
       accessToken: null,
       refreshToken: null,
       isConnected: false,
-      baseFolder: 'Endo_Data'
+      baseFolder: '' // Will be set dynamically based on output file name
     };
     this.loadSettings();
   }
@@ -33,45 +33,26 @@ export class DriveIntegration {
           <h4>Select Cloud Provider:</h4>
           <div class="provider-options">
             <label class="provider-option">
-              <input type="radio" name="provider" value="googledrive" ${this.driveSettings.provider === 'googledrive' ? 'checked' : ''}>
+              <input type="radio" name="provider" value="googledrive" checked>
               <div class="provider-card">
                 <div class="provider-icon">📁</div>
                 <div class="provider-name">Google Drive</div>
-                <div class="provider-status">${this.driveSettings.provider === 'googledrive' && this.driveSettings.isConnected ? '✅ Connected' : '⚪ Not Connected'}</div>
-              </div>
-            </label>
-            
-            <label class="provider-option">
-              <input type="radio" name="provider" value="onedrive" ${this.driveSettings.provider === 'onedrive' ? 'checked' : ''}>
-              <div class="provider-card">
-                <div class="provider-icon">☁️</div>
-                <div class="provider-name">OneDrive</div>
-                <div class="provider-status">${this.driveSettings.provider === 'onedrive' && this.driveSettings.isConnected ? '✅ Connected' : '⚪ Not Connected'}</div>
-              </div>
-            </label>
-            
-            <label class="provider-option">
-              <input type="radio" name="provider" value="dropbox" ${this.driveSettings.provider === 'dropbox' ? 'checked' : ''}>
-              <div class="provider-card">
-                <div class="provider-icon">📦</div>
-                <div class="provider-name">Dropbox</div>
-                <div class="provider-status">${this.driveSettings.provider === 'dropbox' && this.driveSettings.isConnected ? '✅ Connected' : '⚪ Not Connected'}</div>
+                <div class="provider-status">${this.driveSettings.isConnected ? '✅ Connected' : '⚪ Not Connected'}</div>
               </div>
             </label>
           </div>
         </div>
         
         <div class="drive-settings-section">
-          <div class="form-group">
-            <label for="base-folder">Base Folder Name:</label>
-            <input type="text" id="base-folder" class="form-input" value="${this.driveSettings.baseFolder}" placeholder="Endo_Data">
-          </div>
-          
           <div class="connection-status">
             <strong>Status:</strong> 
             <span class="status-indicator ${this.driveSettings.isConnected ? 'connected' : 'disconnected'}">
               ${this.driveSettings.isConnected ? '✅ Connected' : '❌ Not Connected'}
             </span>
+          </div>
+          
+          <div class="info-note">
+            <p><strong>Note:</strong> Files will be organized in folders based on your output file naming settings.</p>
           </div>
         </div>
         
@@ -92,14 +73,6 @@ export class DriveIntegration {
   }
 
   setupDriveDialogEvents() {
-    // Provider selection
-    document.querySelectorAll('input[name="provider"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        this.driveSettings.provider = e.target.value;
-        this.updateConnectionStatus();
-      });
-    });
-
     // Connect drive button
     document.getElementById('connect-drive').onclick = () => this.connectToDrive();
     
@@ -111,7 +84,6 @@ export class DriveIntegration {
 
     // Save settings button
     document.getElementById('save-drive-settings').onclick = () => {
-      this.driveSettings.baseFolder = document.getElementById('base-folder').value || 'Endo_Data';
       this.saveSettings();
       document.getElementById('modal').classList.add('hidden');
       document.getElementById('modal').innerHTML = '';
@@ -127,15 +99,7 @@ export class DriveIntegration {
 
   async connectToDrive() {
     try {
-      const provider = this.driveSettings.provider;
-      
-      if (provider === 'googledrive') {
-        await this.connectToGoogleDrive();
-      } else if (provider === 'onedrive') {
-        await this.connectToOneDrive();
-      } else if (provider === 'dropbox') {
-        await this.connectToDropbox();
-      }
+      await this.connectToGoogleDrive();
       
       this.updateConnectionStatus();
     } catch (error) {
@@ -190,93 +154,9 @@ export class DriveIntegration {
     });
   }
 
-  async connectToOneDrive() {
-    // Simulate OneDrive OAuth flow
-    return new Promise((resolve, reject) => {
-      const popup = window.open('about:blank', 'onedrive-auth', 'width=500,height=600');
-      
-      // Check if popup was blocked
-      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
-        return;
-      }
-      
-      popup.document.write(`
-        <html>
-          <head><title>OneDrive Authorization</title></head>
-          <body style="font-family: Arial; padding: 20px; text-align: center;">
-            <h2>🔐 OneDrive Authorization</h2>
-            <p>This is a simulation of OneDrive OAuth.</p>
-            <p>In a real implementation, this would redirect to Microsoft's OAuth server.</p>
-            <br>
-            <button onclick="window.opener.postMessage('success', '*'); window.close();" 
-                    style="background: #0078d4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-              Grant Access
-            </button>
-            <button onclick="window.opener.postMessage('error', '*'); window.close();" 
-                    style="background: #d13438; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
-              Cancel
-            </button>
-          </body>
-        </html>
-      `);
 
-      window.addEventListener('message', (event) => {
-        if (event.data === 'success') {
-          this.driveSettings.accessToken = 'mock_onedrive_token_' + Date.now();
-          this.driveSettings.isConnected = true;
-          this.saveSettings();
-          resolve();
-        } else if (event.data === 'error') {
-          reject(new Error('User cancelled authorization'));
-        }
-      }, { once: true });
-    });
-  }
 
-  async connectToDropbox() {
-    // Simulate Dropbox OAuth flow
-    return new Promise((resolve, reject) => {
-      const popup = window.open('about:blank', 'dropbox-auth', 'width=500,height=600');
-      
-      // Check if popup was blocked
-      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
-        return;
-      }
-      
-      popup.document.write(`
-        <html>
-          <head><title>Dropbox Authorization</title></head>
-          <body style="font-family: Arial; padding: 20px; text-align: center;">
-            <h2>🔐 Dropbox Authorization</h2>
-            <p>This is a simulation of Dropbox OAuth.</p>
-            <p>In a real implementation, this would redirect to Dropbox's OAuth server.</p>
-            <br>
-            <button onclick="window.opener.postMessage('success', '*'); window.close();" 
-                    style="background: #0061ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-              Grant Access
-            </button>
-            <button onclick="window.opener.postMessage('error', '*'); window.close();" 
-                    style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
-              Cancel
-            </button>
-          </body>
-        </html>
-      `);
 
-      window.addEventListener('message', (event) => {
-        if (event.data === 'success') {
-          this.driveSettings.accessToken = 'mock_dropbox_token_' + Date.now();
-          this.driveSettings.isConnected = true;
-          this.saveSettings();
-          resolve();
-        } else if (event.data === 'error') {
-          reject(new Error('User cancelled authorization'));
-        }
-      }, { once: true });
-    });
-  }
 
   disconnectDrive() {
     this.driveSettings.accessToken = null;
@@ -311,34 +191,19 @@ export class DriveIntegration {
       throw new Error('Drive not connected');
     }
 
-    // Simulate file upload to cloud drive
-    // In a real implementation, this would use the respective cloud API
-    const provider = this.driveSettings.provider;
-    const fullPath = folderPath ? `${this.driveSettings.baseFolder}/${folderPath}/${fileName}` : `${this.driveSettings.baseFolder}/${fileName}`;
+    // Use the folder path as the base folder (derived from output file naming)
+    const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
     
     // Simulate upload delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
     
-    // Generate mock drive link based on provider
+    // Generate mock Google Drive link
     let driveLink;
     const fileId = 'mock_file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    switch (provider) {
-      case 'googledrive':
-        driveLink = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-        break;
-      case 'onedrive':
-        driveLink = `https://1drv.ms/x/s!${fileId}`;
-        break;
-      case 'dropbox':
-        driveLink = `https://www.dropbox.com/s/${fileId}/${fileName}?dl=0`;
-        break;
-      default:
-        driveLink = `https://cloud-storage.example.com/${fileId}`;
-    }
+    driveLink = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
 
     // Log the upload for debugging
-    console.log(`File uploaded to ${provider}:`, {
+    console.log(`File uploaded to Google Drive:`, {
       fileName,
       fullPath,
       driveLink,
@@ -400,12 +265,7 @@ export class DriveIntegration {
   }
 
   getProviderName() {
-    const providers = {
-      'googledrive': 'Google Drive',
-      'onedrive': 'OneDrive',
-      'dropbox': 'Dropbox'
-    };
-    return providers[this.driveSettings.provider] || 'Unknown';
+    return 'Google Drive';
   }
 }
 
