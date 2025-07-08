@@ -49,6 +49,7 @@ window.pgLogout = function() {
 
 // Main Web App - Processing Grapher Web
 import { initTabsAndSidebar } from './ui.js';
+import { driveIntegration } from './drive_integration.js';
 import { SerialMonitor } from './serial_monitor.js';
 import { LiveGraph } from './live_graph.js';
 import { FileGraph } from './file_graph.js';
@@ -80,6 +81,9 @@ state.serialMonitor = new SerialMonitor(state);
 state.liveGraph = new LiveGraph(state);
 state.fileGraph = new FileGraph(state);
 state.settings = new Settings(state);
+
+// Initialize drive integration
+state.driveIntegration = driveIntegration;
 
 state.switchTab = function(tab) {
   state.tab = tab;

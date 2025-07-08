@@ -1,6 +1,7 @@
 // Serial Monitor Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
 import { fileNamingSystem } from './file_naming.js';
+import { driveIntegration } from './drive_integration.js';
 
 export class SerialMonitor {
   constructor(state) {
@@ -23,6 +24,7 @@ export class SerialMonitor {
     this.autoScroll = true;
     this.dataBuffer = '';
     this.userScrolledUp = false; // Track if user manually scrolled up
+    this.driveLink = null; // Store the drive link for current recording
     this.init();
   }
 
@@ -91,6 +93,22 @@ export class SerialMonitor {
         <button id="serial-record-btn" class="sidebtn record-btn">${this.recording ? 'Stop Recording' : 'Start Recording'}</button>
         <button id="set-output-file" class="sidebtn">Set Output File</button>
         <div class="keyboard-hint">Ctrl+R to toggle recording</div>
+        
+        <div class="drive-status-section">
+          <div class="drive-status-header">
+            <span class="drive-status-info">
+              ${driveIntegration.isConnected() ? 
+                `☁️ ${driveIntegration.getProviderName()}` : 
+                '☁️ Drive: Not Connected'
+              }
+            </span>
+            <button id="setup-drive" class="drive-setup-btn">Setup</button>
+          </div>
+          ${driveIntegration.isConnected() ? 
+            '<div style="font-size: 0.8em; color: var(--sidebar-heading);">Files will be auto-uploaded</div>' :
+            '<div style="font-size: 0.8em; color: #ff6b6b;">Connect drive for cloud backup</div>'
+          }
+        </div>
       </div>
       
       <div class="sidebar-section">
@@ -137,6 +155,7 @@ export class SerialMonitor {
     document.getElementById('serial-record-btn').onclick = () => this.toggleRecording();
     document.getElementById('set-output-file').onclick = () => this.setOutputFile();
     document.getElementById('serial-clear-btn').onclick = () => this.clearTerminal();
+    document.getElementById('setup-drive').onclick = () => driveIntegration.showDriveSetupDialog();
     document.getElementById('add-tag-btn').onclick = () => this.addTag();
     document.getElementById('scroll-to-bottom-btn').onclick = () => {
       this.userScrolledUp = false;
@@ -319,28 +338,120 @@ export class SerialMonitor {
     }
   }
 
-  toggleRecording() {
+  async toggleRecording() {
     if (this.recording) {
       this.recording = false;
       if (this.fileHandle) this.fileHandle.close();
       this.fileHandle = null;
+      this.driveLink = null;
       this.appendTerminal('[info] Recording stopped');
     } else {
-      // Download all buffer as TXT
-      const blob = new Blob([this.buffer.join('\n')], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      try {
+        // Prepare data with timestamp column
+        let dataWithTimestamp = this.buffer.map(line => `${new Date().toISOString()},${line}`);
+        let csvData = 'timestamp,message\n' + dataWithTimestamp.join('\n');
+        
+        // Upload to drive if connected
+        if (driveIntegration.isConnected()) {
+          this.showUploadProgress('Uploading to cloud drive...');
+          
+          const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
+          const folderPath = this.outputFolderName || 'serial_logs';
+          
+          try {
+            this.driveLink = await driveIntegration.uploadFile(csvData, filename, folderPath);
+            
+            // Add drive link column to the data
+            csvData = driveIntegration.addDriveLinkToData(csvData, this.driveLink);
+            
+            this.hideUploadProgress();
+            this.appendTerminal(`[info] File uploaded to cloud: ${this.driveLink}`);
+          } catch (uploadError) {
+            this.hideUploadProgress();
+            this.appendTerminal(`[ERROR] Upload failed: ${uploadError.message}`);
+            console.error('Upload error:', uploadError);
+          }
+        }
+        
+        // Download local copy
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        
+        const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
+        a.download = filename;
+        
+        a.click();
+        URL.revokeObjectURL(a.href);
+        
+      } catch (error) {
+        this.appendTerminal(`[ERROR] Recording failed: ${error.message}`);
+        console.error('Recording error:', error);
+      }
       
-      // Use the configured filename or fallback to default
-      const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
-      a.download = filename;
-      
-      a.click();
-      URL.revokeObjectURL(a.href);
       this.recording = true;
       this.appendTerminal('[info] Recording started');
     }
     this.renderSidebar();
+  }
+
+  showUploadProgress(message) {
+    const progress = document.createElement('div');
+    progress.id = 'upload-progress';
+    progress.className = 'upload-progress';
+    progress.innerHTML = `
+      <div class="upload-progress-header">
+        <span class="upload-progress-icon">☁️</span>
+        <span class="upload-progress-text">${message}</span>
+      </div>
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill" style="width: 0%"></div>
+      </div>
+      <div class="upload-progress-details">Preparing upload...</div>
+    `;
+    
+    document.body.appendChild(progress);
+    
+    // Simulate progress
+    let progressValue = 0;
+    const progressInterval = setInterval(() => {
+      progressValue += Math.random() * 20;
+      if (progressValue > 90) progressValue = 90;
+      
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) {
+        fillElement.style.width = progressValue + '%';
+      }
+      if (detailsElement) {
+        detailsElement.textContent = `Uploading... ${Math.round(progressValue)}%`;
+      }
+    }, 200);
+    
+    progress.progressInterval = progressInterval;
+  }
+
+  hideUploadProgress() {
+    const progress = document.getElementById('upload-progress');
+    if (progress) {
+      if (progress.progressInterval) {
+        clearInterval(progress.progressInterval);
+      }
+      
+      // Complete the progress bar
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) fillElement.style.width = '100%';
+      if (detailsElement) detailsElement.textContent = 'Upload complete!';
+      
+      setTimeout(() => {
+        if (progress.parentNode) {
+          progress.parentNode.removeChild(progress);
+        }
+      }, 1500);
+    }
   }
 
   // Keyboard shortcuts handler

@@ -1,6 +1,7 @@
 // Live Graph Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
 import { fileNamingSystem } from './file_naming.js';
+import { driveIntegration } from './drive_integration.js';
 
 export class LiveGraph {
   constructor(state) {
@@ -33,6 +34,7 @@ export class LiveGraph {
     this.splitMode = false; // false = single graph, true = split graphs
     this.canvases = [];
     this.contexts = [];
+    this.driveLink = null; // Store the drive link for current recording
     this.init();
   }
 
@@ -219,6 +221,22 @@ export class LiveGraph {
         <button id="live-record-btn" class="sidebtn record-btn">${this.recording ? 'Stop Recording' : 'Start Recording'}</button>
         <button id="set-output-file" class="sidebtn">Set Output File</button>
         <div class="keyboard-hint">Ctrl+R to toggle recording</div>
+        
+        <div class="drive-status-section">
+          <div class="drive-status-header">
+            <span class="drive-status-info">
+              ${driveIntegration.isConnected() ? 
+                `☁️ ${driveIntegration.getProviderName()}` : 
+                '☁️ Drive: Not Connected'
+              }
+            </span>
+            <button id="setup-drive" class="drive-setup-btn">Setup</button>
+          </div>
+          ${driveIntegration.isConnected() ? 
+            '<div style="font-size: 0.8em; color: var(--sidebar-heading);">Files will be auto-uploaded</div>' :
+            '<div style="font-size: 0.8em; color: #ff6b6b;">Connect drive for cloud backup</div>'
+          }
+        </div>
       </div>
       
       <div class="sidebar-section">
@@ -317,6 +335,7 @@ export class LiveGraph {
     document.getElementById('live-connect-btn').onclick = () => this.toggleSerial();
     document.getElementById('live-record-btn').onclick = () => this.toggleRecording();
     document.getElementById('set-output-file').onclick = () => this.setOutputFile();
+    document.getElementById('setup-drive').onclick = () => driveIntegration.showDriveSetupDialog();
     document.getElementById('baud-rate-btn').onclick = () => this.showBaudRateMenu();
     document.getElementById('max-samples').onchange = e => { this.maxSamples = Number(e.target.value); };
     document.getElementById('line-btn').onclick = () => this.setGraphType('line');
@@ -760,12 +779,40 @@ export class LiveGraph {
     }
   }
 
-  toggleRecording() {
+  async toggleRecording() {
     this.recording = !this.recording;
+    
+    if (!this.recording && this.driveLink) {
+      // Recording stopped, upload data if drive is connected
+      if (driveIntegration.isConnected() && this.data.length > 0) {
+        try {
+          this.showUploadProgress('Uploading live graph data...');
+          
+          let csv = this.channelNames.join(',') + '\n';
+          csv += this.data.map(row => row.join(',')).join('\n');
+          
+          const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+          const folderPath = this.outputFolderName || 'live_graphs';
+          
+          this.driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+          
+          this.hideUploadProgress();
+          console.log('Live graph data uploaded:', this.driveLink);
+        } catch (error) {
+          this.hideUploadProgress();
+          console.error('Upload failed:', error);
+        }
+      }
+      this.driveLink = null;
+    } else if (this.recording) {
+      // Recording started
+      this.driveLink = 'pending'; // Mark as pending upload
+    }
+    
     this.renderSidebar();
   }
 
-  saveCSV() {
+  async saveCSV() {
     if (this.data.length === 0) {
       alert('No data to save');
       return;
@@ -774,6 +821,29 @@ export class LiveGraph {
     let csv = this.channelNames.join(',') + '\n';
     csv += this.data.map(row => row.join(',')).join('\n');
     
+    // Upload to drive if connected
+    if (driveIntegration.isConnected()) {
+      try {
+        this.showUploadProgress('Uploading to cloud drive...');
+        
+        const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+        const folderPath = this.outputFolderName || 'live_graphs';
+        
+        const driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+        
+        // Add drive link column to the data
+        csv = driveIntegration.addDriveLinkToData(csv, driveLink);
+        
+        this.hideUploadProgress();
+        console.log('File uploaded to drive:', driveLink);
+      } catch (error) {
+        this.hideUploadProgress();
+        console.error('Upload failed:', error);
+        alert('Upload failed: ' + error.message);
+      }
+    }
+    
+    // Download local copy
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -784,6 +854,65 @@ export class LiveGraph {
     
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  showUploadProgress(message) {
+    const progress = document.createElement('div');
+    progress.id = 'upload-progress-live';
+    progress.className = 'upload-progress';
+    progress.innerHTML = `
+      <div class="upload-progress-header">
+        <span class="upload-progress-icon">📊</span>
+        <span class="upload-progress-text">${message}</span>
+      </div>
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill" style="width: 0%"></div>
+      </div>
+      <div class="upload-progress-details">Preparing upload...</div>
+    `;
+    
+    document.body.appendChild(progress);
+    
+    // Simulate progress
+    let progressValue = 0;
+    const progressInterval = setInterval(() => {
+      progressValue += Math.random() * 15;
+      if (progressValue > 90) progressValue = 90;
+      
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) {
+        fillElement.style.width = progressValue + '%';
+      }
+      if (detailsElement) {
+        detailsElement.textContent = `Uploading... ${Math.round(progressValue)}%`;
+      }
+    }, 300);
+    
+    progress.progressInterval = progressInterval;
+  }
+
+  hideUploadProgress() {
+    const progress = document.getElementById('upload-progress-live');
+    if (progress) {
+      if (progress.progressInterval) {
+        clearInterval(progress.progressInterval);
+      }
+      
+      // Complete the progress bar
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) fillElement.style.width = '100%';
+      if (detailsElement) detailsElement.textContent = 'Upload complete!';
+      
+      setTimeout(() => {
+        if (progress.parentNode) {
+          progress.parentNode.removeChild(progress);
+        }
+      }, 1500);
+    }
   }
 
   // Keyboard shortcuts handler

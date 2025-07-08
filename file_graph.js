@@ -1,12 +1,14 @@
 // File Graph Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
 import { fileNamingSystem } from './file_naming.js';
+import { driveIntegration } from './drive_integration.js';
 
 export class FileGraph {
   constructor(state) {
     this.state = state;
     this.data = [];
     this.headers = [];
+    this.driveLink = null;
     this.init();
   }
   init() {
@@ -33,10 +35,27 @@ export class FileGraph {
       <button id="file-clear-btn" class="sidebtn">Clear Graph</button>
       <hr>
       <button id="save-csv" class="sidebtn">Download CSV</button>
+      
+      <div class="drive-status-section">
+        <div class="drive-status-header">
+          <span class="drive-status-info">
+            ${driveIntegration.isConnected() ? 
+              `☁️ ${driveIntegration.getProviderName()}` : 
+              '☁️ Drive: Not Connected'
+            }
+          </span>
+          <button id="setup-drive" class="drive-setup-btn">Setup</button>
+        </div>
+        ${driveIntegration.isConnected() ? 
+          '<div style="font-size: 0.8em; color: var(--sidebar-heading);">Files will be auto-uploaded</div>' :
+          '<div style="font-size: 0.8em; color: #ff6b6b;">Connect drive for cloud backup</div>'
+        }
+      </div>
     `;
     document.getElementById('sidebar-csv-upload').onchange = e => this.loadCSV(e.target.files[0]);
     document.getElementById('file-clear-btn').onclick = () => { this.data = []; this.draw(); };
     document.getElementById('save-csv').onclick = () => this.saveCSV();
+    document.getElementById('setup-drive').onclick = () => driveIntegration.showDriveSetupDialog();
     
     // Add set output file button for file graph too
     sb.innerHTML += `<button id="set-file-output" class="sidebtn">Set Output File</button>`;
@@ -81,13 +100,37 @@ export class FileGraph {
       ctx.stroke();
     }
   }
-  saveCSV() {
+  async saveCSV() {
     if (this.data.length === 0) {
       alert('No data to save');
       return;
     }
     
     let csv = [this.headers.join(',')].concat(this.data.map(row=>row.join(','))).join('\n');
+    
+    // Upload to drive if connected
+    if (driveIntegration.isConnected()) {
+      try {
+        this.showUploadProgress('Uploading file graph data...');
+        
+        const filename = this.outputFileName || 'file_graph.csv';
+        const folderPath = this.outputFolderName || 'file_graphs';
+        
+        const driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+        
+        // Add drive link column to the data
+        csv = driveIntegration.addDriveLinkToData(csv, driveLink);
+        
+        this.hideUploadProgress();
+        console.log('File graph uploaded to drive:', driveLink);
+      } catch (error) {
+        this.hideUploadProgress();
+        console.error('Upload failed:', error);
+        alert('Upload failed: ' + error.message);
+      }
+    }
+    
+    // Download local copy
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -99,6 +142,65 @@ export class FileGraph {
     a.click();
     URL.revokeObjectURL(a.href);
   }
+  
+  showUploadProgress(message) {
+    const progress = document.createElement('div');
+    progress.id = 'upload-progress-file';
+    progress.className = 'upload-progress';
+    progress.innerHTML = `
+      <div class="upload-progress-header">
+        <span class="upload-progress-icon">📁</span>
+        <span class="upload-progress-text">${message}</span>
+      </div>
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill" style="width: 0%"></div>
+      </div>
+      <div class="upload-progress-details">Preparing upload...</div>
+    `;
+    
+    document.body.appendChild(progress);
+    
+    // Simulate progress
+    let progressValue = 0;
+    const progressInterval = setInterval(() => {
+      progressValue += Math.random() * 25;
+      if (progressValue > 90) progressValue = 90;
+      
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) {
+        fillElement.style.width = progressValue + '%';
+      }
+      if (detailsElement) {
+        detailsElement.textContent = `Uploading... ${Math.round(progressValue)}%`;
+      }
+    }, 200);
+    
+    progress.progressInterval = progressInterval;
+  }
+  hideUploadProgress() {
+    const progress = document.getElementById('upload-progress-file');
+    if (progress) {
+      if (progress.progressInterval) {
+        clearInterval(progress.progressInterval);
+      }
+      
+      // Complete the progress bar
+      const fillElement = progress.querySelector('.upload-progress-fill');
+      const detailsElement = progress.querySelector('.upload-progress-details');
+      
+      if (fillElement) fillElement.style.width = '100%';
+      if (detailsElement) detailsElement.textContent = 'Upload complete!';
+      
+      setTimeout(() => {
+        if (progress.parentNode) {
+          progress.parentNode.removeChild(progress);
+        }
+      }, 1500);
+    }
+  }
+  
   openFileDialog() {
     document.getElementById('sidebar-csv-upload').click();
   }
