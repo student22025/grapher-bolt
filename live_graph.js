@@ -818,21 +818,22 @@ export class LiveGraph {
       return;
     }
     
-    let csv = this.channelNames.join(',') + '\n';
-    csv += this.data.map(row => row.join(',')).join('\n');
+    // Create tab-separated format with drive link column
+    let txtData = this.channelNames.join('\t') + '\tdrive_link\n';
+    txtData += this.data.map(row => row.join('\t') + '\tdrive_link_placeholder').join('\n');
     
     // Upload to drive if connected
     if (driveIntegration.isConnected()) {
       try {
         this.showUploadProgress('Uploading to cloud drive...');
         
-        const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+        const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
         const folderPath = this.outputFolderName || 'live_graphs';
         
-        const driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+        const driveLink = await driveIntegration.uploadFile(txtData, filename, folderPath);
         
-        // Add drive link column to the data
-        csv = driveIntegration.addDriveLinkToData(csv, driveLink);
+        // Replace placeholder with actual drive link
+        txtData = txtData.replace(/drive_link_placeholder/g, driveLink);
         
         this.hideUploadProgress();
         console.log('File uploaded to drive:', driveLink);
@@ -844,12 +845,12 @@ export class LiveGraph {
     }
     
     // Download local copy
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([txtData], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     
     // Use the configured filename or fallback to timestamp
-    const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+    const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
     a.download = filename;
     
     a.click();

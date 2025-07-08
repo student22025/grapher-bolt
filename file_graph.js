@@ -106,20 +106,22 @@ export class FileGraph {
       return;
     }
     
-    let csv = [this.headers.join(',')].concat(this.data.map(row=>row.join(','))).join('\n');
+    // Create tab-separated format with drive link column
+    let txtData = this.headers.join('\t') + '\tdrive_link\n';
+    txtData += this.data.map(row => row.join('\t') + '\tdrive_link_placeholder').join('\n');
     
     // Upload to drive if connected
     if (driveIntegration.isConnected()) {
       try {
         this.showUploadProgress('Uploading file graph data...');
         
-        const filename = this.outputFileName || 'file_graph.csv';
+        const filename = this.outputFileName || 'file_graph.txt';
         const folderPath = this.outputFolderName || 'file_graphs';
         
-        const driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+        const driveLink = await driveIntegration.uploadFile(txtData, filename, folderPath);
         
-        // Add drive link column to the data
-        csv = driveIntegration.addDriveLinkToData(csv, driveLink);
+        // Replace placeholder with actual drive link
+        txtData = txtData.replace(/drive_link_placeholder/g, driveLink);
         
         this.hideUploadProgress();
         console.log('File graph uploaded to drive:', driveLink);
@@ -131,12 +133,12 @@ export class FileGraph {
     }
     
     // Download local copy
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([txtData], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     
     // Use the configured filename or fallback to default
-    const filename = this.outputFileName || 'file_graph.csv';
+    const filename = this.outputFileName || 'file_graph.txt';
     a.download = filename;
     
     a.click();

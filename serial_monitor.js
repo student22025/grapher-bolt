@@ -347,22 +347,22 @@ export class SerialMonitor {
       this.appendTerminal('[info] Recording stopped');
     } else {
       try {
-        // Prepare data with timestamp column
-        let dataWithTimestamp = this.buffer.map(line => `${new Date().toISOString()},${line}`);
-        let csvData = 'timestamp,message\n' + dataWithTimestamp.join('\n');
+        // Prepare data with timestamp and drive link columns
+        let dataWithTimestamp = this.buffer.map(line => `${new Date().toISOString()}\t${line}\tdrive_link_placeholder`);
+        let txtData = 'timestamp\tmessage\tdrive_link\n' + dataWithTimestamp.join('\n');
         
         // Upload to drive if connected
         if (driveIntegration.isConnected()) {
           this.showUploadProgress('Uploading to cloud drive...');
           
-          const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
+          const filename = this.outputFileName || 'serial_log.txt';
           const folderPath = this.outputFolderName || 'serial_logs';
           
           try {
-            this.driveLink = await driveIntegration.uploadFile(csvData, filename, folderPath);
+            this.driveLink = await driveIntegration.uploadFile(txtData, filename, folderPath);
             
-            // Add drive link column to the data
-            csvData = driveIntegration.addDriveLinkToData(csvData, this.driveLink);
+            // Replace placeholder with actual drive link
+            txtData = txtData.replace(/drive_link_placeholder/g, this.driveLink);
             
             this.hideUploadProgress();
             this.appendTerminal(`[info] File uploaded to cloud: ${this.driveLink}`);
@@ -374,11 +374,11 @@ export class SerialMonitor {
         }
         
         // Download local copy
-        const blob = new Blob([csvData], { type: 'text/csv' });
+        const blob = new Blob([txtData], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         
-        const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
+        const filename = this.outputFileName || 'serial_log.txt';
         a.download = filename;
         
         a.click();

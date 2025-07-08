@@ -81,7 +81,7 @@ export class FileNamingSystem {
     const folderName = `${this.currentSettings.experimentType}${this.currentSettings.modelType}${this.currentSettings.year}${this.currentSettings.experience}S${subject.toString().padStart(2, '0')}T${trial}D${dateStr}`;
     
     // Generate file name
-    const fileName = `${this.currentSettings.experimentType}${this.currentSettings.modelType}${this.currentSettings.year}${this.currentSettings.experience}S${subject.toString().padStart(2, '0')}T${trial}.csv`;
+    const fileName = `${this.currentSettings.experimentType}${this.currentSettings.modelType}${this.currentSettings.year}${this.currentSettings.experience}S${subject.toString().padStart(2, '0')}T${trial}.txt`;
     
     return {
       folderName,

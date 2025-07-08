@@ -390,24 +390,9 @@ export class DriveIntegration {
     }, 4000);
   }
 
-  // Method to add drive link column to CSV data
-  addDriveLinkToData(csvData, driveLink) {
-    const lines = csvData.split('\n');
-    if (lines.length === 0) return csvData;
-
-    // Add drive_link column to header
-    const header = lines[0];
-    const newHeader = header + ',drive_link';
-    
-    // Add drive link to each data row
-    const dataRows = lines.slice(1).map(line => {
-      if (line.trim()) {
-        return line + ',' + driveLink;
-      }
-      return line;
-    });
-
-    return [newHeader, ...dataRows].join('\n');
+  // Method to add drive link column to text data
+  addDriveLinkToData(txtData, driveLink) {
+    return txtData.replace(/drive_link_placeholder/g, driveLink);
   }
 
   isConnected() {
