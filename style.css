@@ -801,3 +801,184 @@ select:focus {
     grid-template-rows: repeat(2, 1fr);
   }
 }
+
+/* File Naming Dialog Styles */
+.file-naming-dialog {
+  min-width: 600px;
+  max-width: 800px;
+  color: var(--sidebar-text);
+}
+
+.file-naming-dialog h3 {
+  color: var(--sidebar-heading);
+  margin: 0 0 1.5em 0;
+  text-align: center;
+  font-size: 1.2em;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+  margin-bottom: 1.5em;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.form-group label {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--sidebar-heading);
+  margin: 0;
+}
+
+.form-select,
+.form-input {
+  padding: 0.5em 0.7em;
+  background: var(--background);
+  border: 1px solid var(--sidebar-divider);
+  border-radius: 4px;
+  color: var(--sidebar-text);
+  font-size: 0.9em;
+  font-family: var(--mono);
+}
+
+.form-select:focus,
+.form-input:focus {
+  outline: none;
+  border-color: var(--sidebar-accent);
+  box-shadow: 0 0 0 2px rgba(208, 38, 98, 0.2);
+}
+
+.form-input[type="number"] {
+  text-align: center;
+}
+
+.preview-container {
+  background: var(--terminal-bg);
+  border: 1px solid var(--sidebar-divider);
+  border-radius: 6px;
+  padding: 1em;
+  margin-bottom: 1.5em;
+}
+
+.preview-container h4 {
+  color: var(--sidebar-heading);
+  margin: 0 0 0.8em 0;
+  font-size: 1em;
+}
+
+.filename-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.preview-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.9em;
+}
+
+.preview-section strong {
+  color: var(--sidebar-heading);
+  min-width: 80px;
+}
+
+.preview-section code {
+  background: var(--sidebar-button);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--terminal-text);
+  word-break: break-all;
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 0.9em;
+  padding: 0.5em;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 0.8em;
+  justify-content: flex-end;
+  margin-top: 1.5em;
+}
+
+.dialog-actions .sidebtn {
+  margin: 0;
+  padding: 0.6em 1.2em;
+  min-width: 120px;
+  text-align: center;
+}
+
+/* Success Notification */
+.success-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #4CAF50;
+  color: white;
+  padding: 1em 1.5em;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+}
+
+.notification-icon {
+  font-size: 1.2em;
+}
+
+.notification-text {
+  font-size: 0.9em;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments for file naming dialog */
+@media (max-width: 768px) {
+  .file-naming-dialog {
+    min-width: 90vw;
+    max-width: 95vw;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8em;
+  }
+  
+  .dialog-actions {
+    flex-direction: column;
+  }
+  
+  .dialog-actions .sidebtn {
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 // File Graph Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
+import { fileNamingSystem } from './file_naming.js';
 
 export class FileGraph {
   constructor(state) {
@@ -36,9 +37,23 @@ export class FileGraph {
     document.getElementById('sidebar-csv-upload').onchange = e => this.loadCSV(e.target.files[0]);
     document.getElementById('file-clear-btn').onclick = () => { this.data = []; this.draw(); };
     document.getElementById('save-csv').onclick = () => this.saveCSV();
+    
+    // Add set output file button for file graph too
+    sb.innerHTML += `<button id="set-file-output" class="sidebtn">Set Output File</button>`;
+    document.getElementById('set-file-output').onclick = () => this.setOutputFile();
     setStatusBar('File Graph');
   }
 }
+  
+  setOutputFile() {
+    fileNamingSystem.showFileNamingDialog((result) => {
+      this.outputFileName = result.fileName;
+      this.outputFolderName = result.folderName;
+      this.outputFullPath = result.fullPath;
+      console.log('File Graph output file set to:', result.fullPath);
+    });
+  }
+  
   loadCSV(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -67,11 +82,20 @@ export class FileGraph {
     }
   }
   saveCSV() {
+    if (this.data.length === 0) {
+      alert('No data to save');
+      return;
+    }
+    
     let csv = [this.headers.join(',')].concat(this.data.map(row=>row.join(','))).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'file_graph.csv';
+    
+    // Use the configured filename or fallback to default
+    const filename = this.outputFileName || 'file_graph.csv';
+    a.download = filename;
+    
     a.click();
     URL.revokeObjectURL(a.href);
   }

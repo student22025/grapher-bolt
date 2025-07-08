@@ -1,5 +1,6 @@
 // Live Graph Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
+import { fileNamingSystem } from './file_naming.js';
 
 export class LiveGraph {
   constructor(state) {
@@ -365,21 +366,12 @@ export class LiveGraph {
   }
 
   setOutputFile() {
-    showModal(`
-      <h3>Set Output File</h3>
-      <input type="text" id="output-filename" placeholder="graph_data.csv" value="graph_data.csv" style="width: 100%; margin: 1em 0;">
-      <div style="text-align: right; margin-top: 1em;">
-        <button id="save-output-file" class="sidebtn accent">Set File</button>
-        <button class="sidebtn close-modal">Cancel</button>
-      </div>
-      <script>
-      document.getElementById('save-output-file').onclick = () => {
-        const filename = document.getElementById('output-filename').value;
-        alert('Output file set to: ' + filename);
-        document.getElementById('modal').classList.add('hidden');
-      };
-      </script>
-    `);
+    fileNamingSystem.showFileNamingDialog((result) => {
+      this.outputFileName = result.fileName;
+      this.outputFolderName = result.folderName;
+      this.outputFullPath = result.fullPath;
+      console.log('Live Graph output file set to:', result.fullPath);
+    });
   }
 
   clearGraph() {
@@ -785,7 +777,11 @@ export class LiveGraph {
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+    
+    // Use the configured filename or fallback to timestamp
+    const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+    a.download = filename;
+    
     a.click();
     URL.revokeObjectURL(a.href);
   }

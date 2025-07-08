@@ -1,5 +1,6 @@
 // Serial Monitor Tab - Processing Grapher Web
 import { setStatusBar, showModal } from './ui.js';
+import { fileNamingSystem } from './file_naming.js';
 
 export class SerialMonitor {
   constructor(state) {
@@ -190,21 +191,12 @@ export class SerialMonitor {
   }
 
   setOutputFile() {
-    showModal(`
-      <h3>Set Output File</h3>
-      <input type="text" id="output-filename" placeholder="serial_log.txt" value="serial_log.txt" style="width: 100%; margin: 1em 0;">
-      <div style="text-align: right; margin-top: 1em;">
-        <button id="save-output-file" class="sidebtn accent">Set File</button>
-        <button class="sidebtn close-modal">Cancel</button>
-      </div>
-      <script>
-      document.getElementById('save-output-file').onclick = () => {
-        const filename = document.getElementById('output-filename').value;
-        alert('Output file set to: ' + filename);
-        document.getElementById('modal').classList.add('hidden');
-      };
-      </script>
-    `);
+    fileNamingSystem.showFileNamingDialog((result) => {
+      this.outputFileName = result.fileName;
+      this.outputFolderName = result.folderName;
+      this.outputFullPath = result.fullPath;
+      console.log('Serial Monitor output file set to:', result.fullPath);
+    });
   }
 
   addTag() {
@@ -338,7 +330,11 @@ export class SerialMonitor {
       const blob = new Blob([this.buffer.join('\n')], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'serial_log.txt';
+      
+      // Use the configured filename or fallback to default
+      const filename = this.outputFileName ? this.outputFileName.replace('.csv', '.txt') : 'serial_log.txt';
+      a.download = filename;
+      
       a.click();
       URL.revokeObjectURL(a.href);
       this.recording = true;
