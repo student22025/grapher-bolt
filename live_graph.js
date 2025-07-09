@@ -818,7 +818,12 @@ export class LiveGraph {
           this.hideUploadProgress();
           console.error('Upload failed:', error);
           this.showErrorMessage('Upload failed: ' + error.message);
-              } else if (this.data.length === 0) {
+        } catch (error) {
+          this.hideUploadProgress();
+          console.error('Upload failed:', error);
+          this.showErrorMessage('Upload failed: ' + error.message);
+        }
+      } else if (this.data.length === 0) {
         this.showErrorMessage('No data to save - recording was empty');
       } else {
         this.showErrorMessage('No Google Drive link set - data not uploaded');
