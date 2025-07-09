@@ -38,6 +38,86 @@ export class LiveGraph {
     this.init();
   }
 
-  // ... rest of the class implementation ...
+  init() {
+    // Initialize the live graph functionality
+    this.setupCanvas();
+    this.setupEventListeners();
+    this.startAnimation();
+  }
 
-} // Added closing brace for class LiveGraph
+  setupCanvas() {
+    // Setup canvas elements for graphing
+    const container = document.getElementById('live-graph-container');
+    if (container) {
+      // Create canvas elements as needed
+    }
+  }
+
+  setupEventListeners() {
+    // Setup event listeners for controls
+  }
+
+  startAnimation() {
+    // Start the animation loop for live graphing
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    this.animate();
+  }
+
+  animate() {
+    // Animation loop for updating the graph
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  connect() {
+    // Connect to serial port
+  }
+
+  disconnect() {
+    // Disconnect from serial port
+  }
+
+  startRecording() {
+    // Start recording data
+    this.recording = true;
+  }
+
+  stopRecording() {
+    // Stop recording data
+    this.recording = false;
+  }
+
+  pause() {
+    // Pause data collection
+    this.paused = true;
+  }
+
+  resume() {
+    // Resume data collection
+    this.paused = false;
+  }
+
+  clearData() {
+    // Clear all collected data
+    this.data = [];
+    this.currentValues = new Array(13).fill(0);
+  }
+
+  updateSettings(settings) {
+    // Update graph settings
+    if (settings.baud) this.baud = settings.baud;
+    if (settings.maxSamples) this.maxSamples = settings.maxSamples;
+    if (settings.dataRate) this.dataRate = settings.dataRate;
+  }
+
+  destroy() {
+    // Clean up resources
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    if (this.reader) {
+      this.reader.cancel();
+    }
+  }
+}
