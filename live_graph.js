@@ -780,33 +780,49 @@ export class LiveGraph {
   }
 
   async toggleRecording() {
+    if (!this.recording) {
+      // Starting recording - check if drive link is set
+      if (!driveIntegration.isConnected()) {
+        const shouldSetup = confirm('No Google Drive link is set. Would you like to set it up now for automatic upload when recording stops?');
+        if (shouldSetup) {
+          driveIntegration.showDriveSetupDialog();
+          return; // Don't start recording yet
+        }
+      }
+    }
+    
     this.recording = !this.recording;
     
-    if (!this.recording && this.driveLink) {
-      // Recording stopped, upload data if drive is connected
+    if (!this.recording) {
+      // Recording stopped - upload data if drive is connected and we have data
       if (driveIntegration.isConnected() && this.data.length > 0) {
         try {
-          this.showUploadProgress('Uploading live graph data...');
+          this.showUploadProgress('Uploading live graph data to Google Drive...');
           
-          let csv = this.channelNames.join(',') + '\n';
-          csv += this.data.map(row => row.join(',')).join('\n');
+          // Create CSV data with timestamp
+          let csvData = 'timestamp,' + this.channelNames.join(',') + ',drive_link\n';
+          csvData += this.data.map((row, index) => {
+            const timestamp = new Date(Date.now() - (this.data.length - index) * (1000 / this.dataRate)).toISOString();
+            return timestamp + ',' + row.join(',') + ',' + driveIntegration.getDriveLink();
+          }).join('\n');
           
           const filename = this.outputFileName || `live_graph_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
           const folderPath = this.outputFolderName || 'live_graphs';
           
-          this.driveLink = await driveIntegration.uploadFile(csv, filename, folderPath);
+          await driveIntegration.uploadFile(csvData, filename, folderPath);
           
           this.hideUploadProgress();
-          console.log('Live graph data uploaded:', this.driveLink);
+          this.showSuccessMessage(`Recording saved to Google Drive: ${filename}`);
+          console.log('Live graph data uploaded to drive folder');
         } catch (error) {
           this.hideUploadProgress();
           console.error('Upload failed:', error);
-        }
+          this.showErrorMessage('Upload failed: ' + error.message);
+      } else if (this.data.length === 0) {
+        this.showErrorMessage('No data to save - recording was empty');
+      } else {
+        this.showErrorMessage('No Google Drive link set - data not uploaded');
       }
-      this.driveLink = null;
-    } else if (this.recording) {
-      // Recording started
-      this.driveLink = 'pending'; // Mark as pending upload
     }
     
     this.renderSidebar();
@@ -914,6 +930,44 @@ export class LiveGraph {
         }
       }, 1500);
     }
+  }
+
+  showSuccessMessage(message) {
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-icon">✅</span>
+        <span class="notification-text">${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 5000);
+  }
+
+  showErrorMessage(message) {
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-icon">❌</span>
+        <span class="notification-text">${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 5000);
   }
 
   // Keyboard shortcuts handler

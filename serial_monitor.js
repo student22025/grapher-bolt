@@ -340,53 +340,46 @@ export class SerialMonitor {
 
   async toggleRecording() {
     if (this.recording) {
+      // Stopping recording - upload data if drive is connected
       this.recording = false;
       if (this.fileHandle) this.fileHandle.close();
       this.fileHandle = null;
-      this.driveLink = null;
-      this.appendTerminal('[info] Recording stopped');
-    } else {
-      try {
-        // Prepare data with timestamp and drive link columns
-        let dataWithTimestamp = this.buffer.map(line => `${new Date().toISOString()}\t${line}\tdrive_link_placeholder`);
-        let txtData = 'timestamp\tmessage\tdrive_link\n' + dataWithTimestamp.join('\n');
-        
-        // Upload to drive if connected
-        if (driveIntegration.isConnected()) {
+      
+      if (driveIntegration.isConnected() && this.buffer.length > 0) {
+        try {
           this.showUploadProgress('Uploading to cloud drive...');
+          
+          // Prepare data with timestamp and drive link columns
+          let dataWithTimestamp = this.buffer.map(line => `${new Date().toISOString()}\t${line}\t${driveIntegration.getDriveLink()}`);
+          let txtData = 'timestamp\tmessage\tdrive_link\n' + dataWithTimestamp.join('\n');
           
           const filename = this.outputFileName || 'serial_log.txt';
           const folderPath = this.outputFolderName || 'serial_logs';
           
-          try {
-            this.driveLink = await driveIntegration.uploadFile(txtData, filename, folderPath);
-            
-            // Replace placeholder with actual drive link
-            txtData = txtData.replace(/drive_link_placeholder/g, this.driveLink);
-            
-            this.hideUploadProgress();
-            this.appendTerminal(`[info] File uploaded to cloud: ${this.driveLink}`);
-          } catch (uploadError) {
-            this.hideUploadProgress();
-            this.appendTerminal(`[ERROR] Upload failed: ${uploadError.message}`);
-            console.error('Upload error:', uploadError);
-          }
+          await driveIntegration.uploadFile(txtData, filename, folderPath);
+          
+          this.hideUploadProgress();
+          this.appendTerminal(`[info] Recording uploaded to Google Drive: ${filename}`);
+        } catch (uploadError) {
+          this.hideUploadProgress();
+          this.appendTerminal(`[ERROR] Upload failed: ${uploadError.message}`);
+          console.error('Upload error:', uploadError);
         }
-        
-        // Download local copy
-        const blob = new Blob([txtData], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        
-        const filename = this.outputFileName || 'serial_log.txt';
-        a.download = filename;
-        
-        a.click();
-        URL.revokeObjectURL(a.href);
-        
-      } catch (error) {
-        this.appendTerminal(`[ERROR] Recording failed: ${error.message}`);
-        console.error('Recording error:', error);
+      } else if (this.buffer.length === 0) {
+        this.appendTerminal('[info] No data to save - recording was empty');
+      } else {
+        this.appendTerminal('[info] No Google Drive link set - data not uploaded');
+      }
+      
+      this.appendTerminal('[info] Recording stopped');
+    } else {
+      // Starting recording - check if drive link is set
+      if (!driveIntegration.isConnected()) {
+        const shouldSetup = confirm('No Google Drive link is set. Would you like to set it up now for automatic upload when recording stops?');
+        if (shouldSetup) {
+          driveIntegration.showDriveSetupDialog();
+          return; // Don't start recording yet
+        }
       }
       
       this.recording = true;

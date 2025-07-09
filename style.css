@@ -962,6 +962,20 @@ select:focus {
   }
 }
 
+/* Error Notification */
+.error-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #ff6b6b;
+  color: white;
+  padding: 1em 1.5em;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideInRight 0.3s ease-out;
+}
+
 /* Responsive adjustments for file naming dialog */
 @media (max-width: 768px) {
   .file-naming-dialog {

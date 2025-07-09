@@ -202,6 +202,25 @@ export class FileGraph {
       }, 1500);
     }
   }
+
+  showSuccessMessage(message) {
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-icon">✅</span>
+        <span class="notification-text">${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 5000);
+  }
   
   openFileDialog() {
     document.getElementById('sidebar-csv-upload').click();
