@@ -1003,70 +1003,49 @@ select:focus {
   font-size: 1em;
 }
 
-.drive-provider-section {
-  margin-bottom: 2em;
-}
-
-.provider-options {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.5em;
-}
-
-.provider-option {
-  margin: 0;
-  cursor: pointer;
-}
-
-.provider-option input[type="radio"] {
-  display: none;
-}
-
-.provider-card {
-  background: var(--sidebar-button);
-  border: 2px solid var(--sidebar-divider);
-  border-radius: 8px;
-  padding: 2em 1.5em;
-  text-align: center;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  min-width: 200px;
-}
-
-.provider-option input[type="radio"]:checked + .provider-card {
-  border-color: var(--sidebar-accent);
-  background: rgba(208, 38, 98, 0.1);
-}
-
-.provider-card:hover {
-  background: var(--sidebar-h);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.provider-icon {
-  font-size: 2.5em;
-  margin-bottom: 0.5em;
-}
-
-.provider-name {
-  font-weight: bold;
-  font-size: 1.1em;
-  margin-bottom: 0.3em;
-  color: var(--sidebar-text);
-}
-
-.provider-status {
-  font-size: 0.9em;
-  color: var(--sidebar-heading);
-}
-
 .drive-settings-section {
   background: var(--terminal-bg);
   border: 1px solid var(--sidebar-divider);
   border-radius: 6px;
   padding: 1.5em;
   margin-bottom: 1.5em;
+}
+
+.form-group {
+  margin-bottom: 1.5em;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--sidebar-heading);
+  margin-bottom: 0.5em;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.6em 0.8em;
+  background: var(--background);
+  border: 1px solid var(--sidebar-divider);
+  border-radius: 4px;
+  color: var(--sidebar-text);
+  font-size: 0.9em;
+  font-family: var(--mono);
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--sidebar-accent);
+  box-shadow: 0 0 0 2px rgba(208, 38, 98, 0.2);
+}
+
+.input-hint {
+  font-size: 0.8em;
+  color: #888;
+  margin-top: 0.3em;
+  font-style: italic;
 }
 
 .info-note {
@@ -1082,6 +1061,17 @@ select:focus {
   margin: 0;
   color: var(--sidebar-heading);
 }
+
+.info-note ol {
+  margin: 0.5em 0 0 0;
+  padding-left: 1.2em;
+}
+
+.info-note li {
+  margin-bottom: 0.3em;
+  font-size: 0.85em;
+}
+
 .connection-status {
   margin-top: 1em;
   padding: 0.8em;

@@ -4,11 +4,8 @@ import { showModal } from './ui.js';
 export class DriveIntegration {
   constructor() {
     this.driveSettings = {
-      provider: 'googledrive', // only googledrive
-      accessToken: null,
-      refreshToken: null,
-      isConnected: false,
-      baseFolder: '' // Will be set dynamically based on output file name
+      driveLink: '',
+      isConnected: false
     };
     this.loadSettings();
   }
@@ -27,21 +24,7 @@ export class DriveIntegration {
   showDriveSetupDialog() {
     showModal(`
       <div class="drive-setup-dialog">
-        <h3>☁️ Cloud Drive Setup</h3>
-        
-        <div class="drive-provider-section">
-          <h4>Select Cloud Provider:</h4>
-          <div class="provider-options">
-            <label class="provider-option">
-              <input type="radio" name="provider" value="googledrive" checked>
-              <div class="provider-card">
-                <div class="provider-icon">📁</div>
-                <div class="provider-name">Google Drive</div>
-                <div class="provider-status">${this.driveSettings.isConnected ? '✅ Connected' : '⚪ Not Connected'}</div>
-              </div>
-            </label>
-          </div>
-        </div>
+        <h3>☁️ Google Drive Setup</h3>
         
         <div class="drive-settings-section">
           <div class="connection-status">
@@ -51,15 +34,28 @@ export class DriveIntegration {
             </span>
           </div>
           
+          <div class="form-group">
+            <label for="drive-link-input">Google Drive Folder Link:</label>
+            <input type="url" id="drive-link-input" class="form-input" 
+                   value="${this.driveSettings.driveLink}" 
+                   placeholder="https://drive.google.com/drive/folders/your-folder-id">
+            <div class="input-hint">Paste the shareable link to your Google Drive folder</div>
+          </div>
+          
           <div class="info-note">
-            <p><strong>Note:</strong> Files will be organized in folders based on your output file naming settings.</p>
+            <p><strong>Instructions:</strong></p>
+            <ol>
+              <li>Create a folder in your Google Drive</li>
+              <li>Right-click the folder and select "Get link"</li>
+              <li>Set permissions to "Anyone with the link can edit"</li>
+              <li>Copy and paste the link above</li>
+            </ol>
           </div>
         </div>
         
         <div class="drive-actions">
-          <button id="connect-drive" class="sidebtn accent">${this.driveSettings.isConnected ? 'Reconnect' : 'Connect'} Drive</button>
-          <button id="test-upload" class="sidebtn" ${!this.driveSettings.isConnected ? 'disabled' : ''}>Test Upload</button>
-          <button id="disconnect-drive" class="sidebtn" ${!this.driveSettings.isConnected ? 'disabled' : ''}>Disconnect</button>
+          <button id="test-upload" class="sidebtn" ${!this.driveSettings.driveLink ? 'disabled' : ''}>Test Upload</button>
+          <button id="disconnect-drive" class="sidebtn" ${!this.driveSettings.isConnected ? 'disabled' : ''}>Clear Settings</button>
         </div>
         
         <div class="dialog-actions">
@@ -73,21 +69,35 @@ export class DriveIntegration {
   }
 
   setupDriveDialogEvents() {
-    // Connect drive button
-    document.getElementById('connect-drive').onclick = () => this.connectToDrive();
-    
     // Test upload button
     document.getElementById('test-upload').onclick = () => this.testUpload();
     
-    // Disconnect button
-    document.getElementById('disconnect-drive').onclick = () => this.disconnectDrive();
+    // Clear settings button
+    document.getElementById('disconnect-drive').onclick = () => this.clearSettings();
 
     // Save settings button
     document.getElementById('save-drive-settings').onclick = () => {
-      this.saveSettings();
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('modal').innerHTML = '';
-      this.showSuccessMessage('Drive settings saved successfully');
+      const driveLink = document.getElementById('drive-link-input').value.trim();
+      
+      if (driveLink && this.validateDriveLink(driveLink)) {
+        this.driveSettings.driveLink = driveLink;
+        this.driveSettings.isConnected = true;
+        this.saveSettings();
+        
+        document.getElementById('modal').classList.add('hidden');
+        document.getElementById('modal').innerHTML = '';
+        this.showSuccessMessage('Drive settings saved successfully');
+      } else if (driveLink) {
+        alert('Please enter a valid Google Drive folder link');
+      } else {
+        this.driveSettings.driveLink = '';
+        this.driveSettings.isConnected = false;
+        this.saveSettings();
+        
+        document.getElementById('modal').classList.add('hidden');
+        document.getElementById('modal').innerHTML = '';
+        this.showSuccessMessage('Drive settings cleared');
+      }
     };
 
     // Cancel button
@@ -95,122 +105,84 @@ export class DriveIntegration {
       document.getElementById('modal').classList.add('hidden');
       document.getElementById('modal').innerHTML = '';
     };
-  }
 
-  async connectToDrive() {
-    try {
-      await this.connectToGoogleDrive();
-      
-      this.updateConnectionStatus();
-    } catch (error) {
-      console.error('Drive connection error:', error);
-      alert('Failed to connect to drive: ' + error.message);
-    }
-  }
-
-  async connectToGoogleDrive() {
-    // Simulate Google Drive OAuth flow
-    // In a real implementation, you would use Google Drive API
-    return new Promise((resolve, reject) => {
-      // Simulate OAuth popup
-      const popup = window.open('about:blank', 'google-auth', 'width=500,height=600');
-      
-      // Check if popup was blocked
-      if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-        reject(new Error('Pop-up blocked. Please disable your browser\'s pop-up blocker for this site and try again.'));
-        return;
-      }
-      
-      popup.document.write(`
-        <html>
-          <head><title>Google Drive Authorization</title></head>
-          <body style="font-family: Arial; padding: 20px; text-align: center;">
-            <h2>🔐 Google Drive Authorization</h2>
-            <p>This is a simulation of Google Drive OAuth.</p>
-            <p>In a real implementation, this would redirect to Google's OAuth server.</p>
-            <br>
-            <button onclick="window.opener.postMessage('success', '*'); window.close();" 
-                    style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-              Grant Access
-            </button>
-            <button onclick="window.opener.postMessage('error', '*'); window.close();" 
-                    style="background: #ea4335; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
-              Cancel
-            </button>
-          </body>
-        </html>
-      `);
-
-      window.addEventListener('message', (event) => {
-        if (event.data === 'success') {
-          this.driveSettings.accessToken = 'mock_google_token_' + Date.now();
-          this.driveSettings.isConnected = true;
-          this.saveSettings();
-          resolve();
-        } else if (event.data === 'error') {
-          reject(new Error('User cancelled authorization'));
-        }
-      }, { once: true });
+    // Real-time validation
+    document.getElementById('drive-link-input').addEventListener('input', (e) => {
+      const testBtn = document.getElementById('test-upload');
+      const isValid = this.validateDriveLink(e.target.value.trim());
+      testBtn.disabled = !isValid;
     });
   }
 
+  validateDriveLink(link) {
+    // Check if it's a valid Google Drive folder link
+    const drivePattern = /^https:\/\/drive\.google\.com\/drive\/folders\/[a-zA-Z0-9_-]+/;
+    return drivePattern.test(link);
+  }
 
-
-
-
-  disconnectDrive() {
-    this.driveSettings.accessToken = null;
-    this.driveSettings.refreshToken = null;
+  clearSettings() {
+    this.driveSettings.driveLink = '';
     this.driveSettings.isConnected = false;
     this.saveSettings();
     this.updateConnectionStatus();
-    this.showSuccessMessage('Drive disconnected successfully');
+    this.showSuccessMessage('Drive settings cleared');
   }
 
   async testUpload() {
-    if (!this.driveSettings.isConnected) {
-      alert('Please connect to a drive first');
+    if (!this.driveSettings.isConnected || !this.driveSettings.driveLink) {
+      alert('Please set up a drive link first');
       return;
     }
 
     try {
       // Create a test file
-      const testData = `Test Upload,${new Date().toISOString()}\nThis is a test file to verify drive connectivity\nProvider: ${this.driveSettings.provider}\nTimestamp: ${Date.now()}`;
-      const testFileName = `test_upload_${Date.now()}.csv`;
+      const testData = `Test Upload,${new Date().toISOString()}\nThis is a test file to verify drive connectivity\nTimestamp: ${Date.now()}`;
+      const testFileName = `test_upload_${Date.now()}.txt`;
       
       const driveLink = await this.uploadFile(testData, testFileName, 'test');
       
-      this.showSuccessMessage(`Test upload successful! File uploaded to: ${driveLink}`);
+      this.showSuccessMessage(`Test upload successful! File would be uploaded to your drive folder.`);
     } catch (error) {
       alert('Test upload failed: ' + error.message);
     }
   }
 
   async uploadFile(data, fileName, folderPath = '') {
-    if (!this.driveSettings.isConnected) {
+    if (!this.driveSettings.isConnected || !this.driveSettings.driveLink) {
       throw new Error('Drive not connected');
     }
 
-    // Use the folder path as the base folder (derived from output file naming)
-    const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
-    
     // Simulate upload delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
     
-    // Generate mock Google Drive link
-    let driveLink;
-    const fileId = 'mock_file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    driveLink = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+    // Extract folder ID from the drive link
+    const folderIdMatch = this.driveSettings.driveLink.match(/folders\/([a-zA-Z0-9_-]+)/);
+    if (!folderIdMatch) {
+      throw new Error('Invalid drive folder link');
+    }
+    
+    const folderId = folderIdMatch[1];
+    
+    // Create the full path for the file
+    const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
+    
+    // Generate a simulated file link based on the folder structure
+    const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const fileLink = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
 
     // Log the upload for debugging
     console.log(`File uploaded to Google Drive:`, {
       fileName,
       fullPath,
-      driveLink,
+      targetFolder: this.driveSettings.driveLink,
+      folderId,
+      fileLink,
       size: data.length
     });
 
-    return driveLink;
+    // In a real implementation, you would use Google Drive API here
+    // For now, we return the configured drive link as the upload location
+    return this.driveSettings.driveLink;
   }
 
   updateConnectionStatus() {
@@ -221,18 +193,14 @@ export class DriveIntegration {
     }
 
     // Update button states
-    const connectBtn = document.getElementById('connect-drive');
     const testBtn = document.getElementById('test-upload');
-    const disconnectBtn = document.getElementById('disconnect-drive');
+    const clearBtn = document.getElementById('disconnect-drive');
 
-    if (connectBtn) {
-      connectBtn.textContent = this.driveSettings.isConnected ? 'Reconnect' : 'Connect';
-    }
     if (testBtn) {
       testBtn.disabled = !this.driveSettings.isConnected;
     }
-    if (disconnectBtn) {
-      disconnectBtn.disabled = !this.driveSettings.isConnected;
+    if (clearBtn) {
+      clearBtn.disabled = !this.driveSettings.isConnected;
     }
   }
 
@@ -261,11 +229,15 @@ export class DriveIntegration {
   }
 
   isConnected() {
-    return this.driveSettings.isConnected;
+    return this.driveSettings.isConnected && this.driveSettings.driveLink;
   }
 
   getProviderName() {
     return 'Google Drive';
+  }
+
+  getDriveLink() {
+    return this.driveSettings.driveLink;
   }
 }
 
